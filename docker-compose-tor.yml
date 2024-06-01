@@ -1,0 +1,62 @@
+version: "3.3"
+services:
+  nordvpn:
+    container_name: GlueTun-Nord
+    image: qmcgaw/gluetun
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "8089:8089" # QbitTorrent UI
+      - "9092:9091" # Transmission
+      - "51413:51413" # Transmision
+      - "51413:51413/udp" # Transmision
+      - "51420:51420" # QbitTorrent
+      - "51420:51420/udp" # QbitTorrent
+    environment:
+      - VPN_SERVICE_PROVIDER=nordvpn
+      - OPENVPN_USER=W9mN58pcqpfhG56qiJkoUf5A
+      - OPENVPN_PASSWORD=NqRkqSuqBkr8FqpZ36boQEkT
+      - SERVER_REGIONS=Canada
+      - VPN_TYPE=openvpn
+    restart: always
+
+  qbittorrent:
+    image: linuxserver/qbittorrent:4.5.2
+    network_mode: "service:nordvpn"
+    container_name: QbitTorrent-Nord
+    depends_on:
+      - nordvpn
+    environment:
+      - WEBUI_PORT=8089
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Toronto
+    volumes:
+      - "/etc/qBittorrent-VPN/config:/config"
+      - "/data/torrents:/torrents"
+      - "/data/media:/media"
+    restart: always
+
+  app:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: always
+    ports:
+      # These ports are in format <host-port>:<container-port>
+      - '80:80' # Public HTTP Port
+      - '443:443' # Public HTTPS Port
+      - '81:81' # Admin Web Port
+      # Add any other Stream port you want to expose
+      # - '21:21' # FTP
+
+    # Uncomment the next line if you uncomment anything in the section
+    # environment:
+      # Uncomment this if you want to change the location of
+      # the SQLite DB file within the container
+      # DB_SQLITE_FILE: "/data/database.sqlite"
+
+      # Uncomment this if IPv6 is not enabled on your host
+      # DISABLE_IPV6: 'true'
+
+    volumes:
+      - /srv/config/nginxproxymanager:/data
+      - /srv/config/nginxproxymanager/letsencrypt:/etc/letsencrypt
